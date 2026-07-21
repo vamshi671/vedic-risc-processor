@@ -1,110 +1,83 @@
-# Vedic Multiplier Based RISC Processor
+# Custom 8-bit CPU with Vedic Multiplier ALU
 
-## 📌 Project Overview
-This project implements a simple RISC processor architecture in Verilog HDL.  
-The design integrates a **Vedic multiplier** for efficient multiplication operations and demonstrates a complete CPU datapath including instruction fetch, decode, execute, and write-back stages.
+A small RISC-style CPU implemented in Verilog, featuring a hardware multiplier built from cascaded **Vedic multiplier** submodules instead of a standard `*` operator. Includes a full fetch–decode–execute datapath, register file, control unit, and self-checking testbenches for every module.
 
-The processor is modular, fully synthesizable, and verified using waveform-based simulation.
+## Features
 
----
+- **4-instruction ISA**: `ADD`, `SUB`, `AND`, `MUL`
+- **16-bit instruction format**: `[15:12] opcode | [11:9] rd | [7:5] rs1 | [3:1] rs2`
+- **8x8 register file** with R0 hardwired to zero (write-protected)
+- **4x4 Vedic multiplier** built from four cascaded 2x2 Vedic multiplier submodules
+- **Full CPU datapath**: PC → instruction memory → control unit → register file → ALU
+- **Self-checking testbenches** with automated `PASS` / `FAIL` reporting for every module
 
-## 🧠 Architecture Overview
-The processor consists of the following main blocks:
-- Program Counter (PC)
-- Instruction Memory
-- Control Unit
-- Register File (8×8)
-- ALU (Arithmetic, Logical, and Vedic Multiplier)
-- Datapath Integration
-- Top-level CPU module
+## Project structure
 
----
-
-## ⚙️ Instruction Set (Sample)
-| Opcode | Operation |
-|--------|-----------|
-| 0000   | ADD       |
-| 0001   | SUB       |
-| 0010   | AND       |
-| 0011   | MUL (Vedic) |
-
----
-
-## 🧪 Verification & Simulation
-The design was simulated using **Icarus Verilog**.  
-Waveforms were visualized using the **WaveTracer VS Code extension** by loading generated `.vcd` files.
-
-### ✔ Module-level verification
-- ALU
-- Register File (8×8)
-- Vedic 2×2 Multiplier
-- Vedic 4×4 Multiplier
-
-### ✔ System-level verification
-- Complete CPU (`cpu_top`)
-
-### ✔ Key signals verified
-- Program Counter (PC)
-- Instruction Fetch
-- Opcode Decode
-- Register Read and Write
-- ALU Operation Selection
-- ALU Result
-- Vedic Multiplier Output
-
-Waveform screenshots are provided in the `waveforms/` directory.
-
----
-
-## 📂 Project Structure
-```text
-VEDIC_RISC/
-├── RTL/            # Verilog RTL source files
-├── testbenches/    # Testbench files
-├── waveforms/      # Waveform screenshots (PNG)
-└── README.md
-## 🛠️ Tools Used
-- **Verilog HDL** – RTL design and modeling
-- **Icarus Verilog** (`iverilog`, `vvp`) – Compilation and simulation
-- **WaveTracer (VS Code Extension)** – Waveform visualization using `.vcd` files
-- **Visual Studio Code** – Code editor
-- **Git & GitHub** – Version control and project hosting
-
----
-
-## 🚀 How to Run
-
-### 1️⃣ Prerequisites
-Make sure the following tools are installed:
-- Icarus Verilog (`iverilog`, `vvp`)
-- Visual Studio Code (optional)
-- WaveTracer VS Code extension
-
----
-
-### 2️⃣ Compile the Design
-Run the following command from the project root directory:
-
-```bash
-iverilog -o cpu \
-testbenches/tb_cpu_top.v \
-RTL/cpu_top.v \
-RTL/datapath.v \
-RTL/control_unit.v \
-RTL/alu_core.v \
-RTL/alu_4bit.v \
-RTL/regfile_8x8.v \
-RTL/instr_mem.v \
-RTL/pc.v \
-RTL/vedic_2x2.v \
-RTL/vedic_4x4.v
+```
+.
+├── design_vedic_2x2.v      # 2x2 Vedic multiplier
+├── design_vedic_4x4.v      # 4x4 Vedic multiplier (built from four 2x2 units)
+├── design_alu_4bit.v       # ALU: ADD, SUB, AND, and Vedic MUL
+├── design_regfile_8x8.v    # 8x8 register file (R0 = zero register)
+├── design_datapath.v       # Decode + control unit + regfile + ALU
+├── design_cpu_top.v        # Top-level CPU: PC + instruction memory + datapath
+├── tb_vedic_2x2.v          # Self-checking testbench
+├── tb_vedic_4x4.v          # Self-checking testbench
+├── tb_alu_4bit.v           # Self-checking testbench
+├── tb_regfile_8x8.v        # Self-checking testbench
+├── tb_datapath.v           # Testbench with live console monitor
+├── tb_cpu_top.v            # Full CPU-level testbench
+└── waveforms/              # Simulation waveform screenshots
 ```
 
----
+## Module overview
 
-### 3️⃣ Run the Simulation
+| Module | Description |
+|---|---|
+| `vedic_2x2` | Computes a 2-bit x 2-bit product using the Vedic (Urdhva-Tiryagbhyam) cross-multiplication method. |
+| `vedic_4x4` | Splits each 4-bit input into two 2-bit halves, computes four partial products with `vedic_2x2` instances, and combines them with shifted addition. |
+| `alu_4bit` | 4-bit ALU supporting ADD, SUB, AND, and MUL (via `vedic_4x4`), selected by a 2-bit opcode. |
+| `regfile_8x8` | 8 general-purpose 8-bit registers, synchronous write / combinational read, R0 always reads as 0. |
+| `control_unit` | Decodes the instruction opcode into an ALU operation and a register-write enable signal. |
+| `datapath` | Wires together instruction decode, control unit, register file, and ALU for one instruction cycle. |
+| `cpu_top` | Adds a program counter and instruction memory on top of the datapath for a complete, running CPU. |
+
+## Running the simulation
+
+Using [Icarus Verilog](http://iverilog.icarus.com/):
+
 ```bash
-vvp cpu
+# Example: simulate the 4x4 Vedic multiplier
+iverilog -o vedic_4x4_sim design_vedic_4x4.v tb_vedic_4x4.v
+vvp vedic_4x4_sim
+
+# Example: simulate the full CPU
+iverilog -o cpu_sim design_cpu_top.v tb_cpu_top.v
+vvp cpu_sim
 ```
 
-This will generate a `.vcd` waveform file, which can be viewed using the **WaveTracer** extension in VS Code.
+Each unit-level testbench (`tb_vedic_2x2`, `tb_vedic_4x4`, `tb_alu_4bit`, `tb_regfile_8x8`) prints a `PASS`/`FAIL` line per test vector and a final summary:
+
+```
+PASS: a=3 b=4 p=12
+...
+ALL TESTS PASSED
+```
+
+Waveforms can be viewed by opening the generated `.vcd` file in GTKWave or a similar viewer. Reference waveform captures are included in `waveforms/`.
+
+## Example program (`instr_mem`)
+
+The default program preloaded in `cpu_top` demonstrates all four operations, using the simulation-only register preload (`regs[i] = i`):
+
+```
+r3 = r1 + r2   (ADD)
+r4 = r1 - r2   (SUB)
+r5 = r1 & r2   (AND)
+r6 = r5 * r4   (MUL, via Vedic multiplier)
+```
+
+## Notes
+
+- The register file's `regs[i] = i` initial block is for simulation convenience only (giving testbenches non-zero operands before the first write) and is not synthesizable reset behavior; a real `reset` always clears all registers to 0.
+- `tb_datapath.v` and `tb_cpu_top.v` verify behavior via VCD waveforms and live console monitoring rather than automated assertions.
